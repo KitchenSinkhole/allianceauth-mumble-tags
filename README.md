@@ -5,6 +5,8 @@
 Appends tags such as `[FC]` or `[LOGI]` to a user's Mumble display name based on
 their Alliance Auth group membership.
 
+<img width="317" height="165" alt="image" src="https://github.com/user-attachments/assets/c5a1a69a-a06f-4242-9bb8-8822d5134999" />
+
 Built for **Alliance Auth 5.x**. A replacement for the unmaintained
 [`allianceauth-mumble-tagger`](https://github.com/Solar-Helix-Independent-Transport/allianceauth-mumble-tagger),
 which is broken on AA 5 (see [Why this exists](#why-this-exists)).
