@@ -25,14 +25,18 @@ which fails silently on AA 5 (see [Why this exists](#why-this-exists)).
 - [Troubleshooting](#troubleshooting)
 - [Uninstalling](#uninstalling)
 - [Development](#development)
+- [Contributing](#contributing)
 
 ---
 
 ## Requirements
 
 - Alliance Auth `>=5.0.0,<6`
-- Python 3.10 – 3.14
+- Python 3.10 – 3.14 (CI covers 3.10 – 3.13)
 - The Mumble service enabled (`allianceauth.services.modules.mumble`)
+
+The package is installed from Git, not PyPI — the URLs below are the canonical
+install source.
 
 ---
 
@@ -51,15 +55,7 @@ by the upstream `download.sh` script).
 > `image: ${AA_DOCKER_TAG?err}` active and the `build:` block commented out,
 > do the custom image steps first.
 
-### 1. Make the package reachable from the build
-
-Push this repository somewhere the build can pull from. A private GitHub or
-GitLab repo is fine.
-
-Alternatively, install from a local directory — see
-[Installing from a local copy](#installing-from-a-local-copy) below.
-
-### 2. Add to `conf/requirements.txt`
+### 1. Add to `conf/requirements.txt`
 
 One entry per line. Pin to a tag so builds are reproducible:
 
@@ -70,7 +66,11 @@ allianceauth-mumble-tags @ git+https://github.com/KitchenSinkhole/allianceauth-m
 
 `zeroc-ice` will already be there for the Mumble authenticator — leave it.
 
-### 3. Add to `INSTALLED_APPS` in `conf/local.py`
+The repository is public, so the build pulls it directly — no registry account,
+no mirroring, no credentials. If you would rather not pull from GitHub at build
+time, see [Installing from a local copy](#installing-from-a-local-copy) below.
+
+### 2. Add to `INSTALLED_APPS` in `conf/local.py`
 
 **Order matters** — `mumbletags` must come after the Mumble service:
 
@@ -83,7 +83,7 @@ INSTALLED_APPS += [
 
 If Mumble already appears earlier in the file, just append `"mumbletags"`.
 
-### 4. Rebuild and bring the stack up
+### 3. Rebuild and bring the stack up
 
 ```bash
 cd ~/aa-docker
@@ -94,7 +94,7 @@ docker compose --env-file=.env up -d
 `docker compose build` is required — `up -d` alone will reuse the cached image
 and your new package will not appear.
 
-### 5. Run migrations
+### 4. Run migrations
 
 ```bash
 docker compose exec allianceauth_gunicorn bash
@@ -105,9 +105,9 @@ exit
 
 (`auth` is the alias for `python manage.py` inside the container.)
 
-### 6. Confirm the authenticator picked up the new image
+### 5. Confirm the authenticator picked up the new image
 
-This is the step people miss. In the upstream compose file the authenticator
+In the upstream compose file the authenticator
 shares the same YAML anchor as the web containers:
 
 ```yaml
@@ -136,7 +136,8 @@ Auth web UI but **not** in Mumble.
 
 ### Installing from a local copy
 
-If you would rather not host the repo, place this directory inside `aa-docker/`
+Only needed if the build host has no outbound access to GitHub, or you are
+testing local modifications. Clone or copy this directory inside `aa-docker/`
 so it falls within the Docker build context, then check `custom.dockerfile`. It
 copies `conf/requirements.txt` and pip-installs it; a local path must also be
 copied in *before* that install runs. Add a line above it:
@@ -164,10 +165,13 @@ For the non-containerized layout: user `allianceserver`, virtualenv at
 ```bash
 sudo su allianceserver
 source /home/allianceserver/venv/auth/bin/activate
-pip install git+https://github.com/KitchenSinkhole/allianceauth-mumble-tags.git
+pip install git+https://github.com/KitchenSinkhole/allianceauth-mumble-tags.git@v1.0.0
 ```
 
-Or from a copied directory: `cd allianceauth-mumble-tags && pip install .`
+Drop the `@v1.0.0` to track `main`; pinning to a tag is recommended so a later
+`pip install --upgrade` on an unrelated package can't drag in a new version.
+
+Or from a cloned directory: `cd allianceauth-mumble-tags && pip install .`
 (add `-e` to keep editing the source in place).
 
 Add to `INSTALLED_APPS` in
@@ -325,7 +329,7 @@ tag.groups.set(Group.objects.filter(name__in=["Fleet Commanders", "Senior FC"]))
 ### Bare metal
 
 ```bash
-pip install --upgrade git+https://github.com/KitchenSinkhole/allianceauth-mumble-tags.git
+pip install --upgrade git+https://github.com/KitchenSinkhole/allianceauth-mumble-tags.git@v1.0.0
 python manage.py migrate
 python manage.py collectstatic --noinput
 sudo supervisorctl restart all
@@ -475,6 +479,25 @@ To regenerate migrations after a model change:
 ```bash
 PYTHONPATH=. DJANGO_SETTINGS_MODULE=testsettings django-admin makemigrations mumbletags
 ```
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome at
+[KitchenSinkhole/allianceauth-mumble-tags](https://github.com/KitchenSinkhole/allianceauth-mumble-tags).
+
+When reporting a problem, include:
+
+- Alliance Auth version and whether you run Docker or bare metal
+- Any `mumbletags` lines from the log (see [Verifying the install](#verifying-the-install))
+- What the display name shows in the Auth web UI versus in Mumble — the two
+  differing almost always means the authenticator wasn't restarted
+
+Pull requests should keep `django-admin test mumbletags` green; CI runs it on
+Python 3.10 – 3.13.
+
+Release notes live in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
