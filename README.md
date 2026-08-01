@@ -7,7 +7,7 @@ their Alliance Auth group membership.
 
 Built for **Alliance Auth 5.x**. A replacement for the unmaintained
 [`allianceauth-mumble-tagger`](https://github.com/Solar-Helix-Independent-Transport/allianceauth-mumble-tagger),
-which fails silently on AA 5 (see [Why this exists](#why-this-exists)).
+which is broken on AA 5 (see [Why this exists](#why-this-exists)).
 
 ---
 
@@ -374,27 +374,23 @@ changes, so no `redis-cli flushall` is needed after editing tags.
 
 ## Why this exists
 
-The original `allianceauth-mumble-tagger` (last commit January 2021) writes to
-`MumbleUser.display_name`:
+The original `allianceauth-mumble-tagger` (last commit January 2021) applies
+tags by assigning to `MumbleUser.display_name`:
 
 ```python
 mu_instance.display_name = new_display_name
 ```
 
-In AA 5 that column was removed (migration
-`0016_idlerhandler_alter_mumbleuser_options_and_more`) and replaced with a
-read-only property. The assignment raises `AttributeError`, which the original
-swallows:
+That worked while `display_name` was a database column. Alliance Auth 5 dropped
+the column (migration `0016_idlerhandler_alter_mumbleuser_options_and_more`)
+and replaced it with a computed, read-only property, so there is no longer
+anything to assign to — the write raises `AttributeError` and the tag is never
+applied.
 
-```python
-except Exception as e:
-    logger.error(e, exc_info=1)
-    pass  # shits fucked... Don't worry about it...
-```
-
-The result is no crash, no visible error, and tags that never appear. Its two
-public forks do not address this — the only active one (`Shawncrew`) fixes a
-genuine AA 3/4-era bug but still assigns to the same property.
+What broke is the approach rather than one line, which is why this is a
+separate app instead of a patch. Tags here are produced by *reading* the
+property and wrapping it, so nothing is stored and nothing can drift out of
+sync with group membership.
 
 ---
 
